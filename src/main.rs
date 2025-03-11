@@ -1,0 +1,149 @@
+use std::{fs, path};
+
+use iced::{Element, Task};
+
+mod autocomplete;
+
+#[derive(Debug, Clone)]
+enum Message {
+    Next,
+    Last,
+    DeleteCurrent,
+    Quit,
+}
+
+#[derive(Debug, Clone)]
+struct Viewer {
+    img_paths: Vec<String>,
+    current_img: usize,
+    images_bytes: Vec<Vec<u8>>,
+}
+
+impl Viewer {
+    fn update(&mut self, message: Message) -> Task<Message> {
+        if !path::Path::new(&self.img_paths[self.current_img]).exists() {
+            self.delete_img(self.current_img);
+        }
+
+        match message {
+            Message::Next => {
+                if self.img_paths.len() - 1 > self.current_img {
+                    self.current_img += 1;
+                } else {
+                    self.current_img = 0;
+                }
+
+                Task::none()
+            }
+            Message::Last => {
+                if self.current_img > 0 {
+                    self.current_img -= 1;
+                } else {
+                    self.current_img = self.img_paths.len() - 1;
+                }
+
+                Task::none()
+            }
+            Message::DeleteCurrent => {
+                self.delete_img(self.current_img);
+                Task::none()
+            }
+            Message::Quit => iced::exit(),
+        }
+    }
+
+    fn view(&self) -> Element<Message> {
+        //let path = self.img_paths.get(5).unwrap();
+        //let image = fs::read(path).unwrap();
+        let image_handle = self.img_paths.get(self.current_img).unwrap();
+
+        //let image_handle =
+        //  iced::widget::image::Handle::from_bytes(self.images_bytes[self.current_img].clone());
+
+        iced::widget::row![
+            iced::widget::button("previous")
+                .width(50)
+                .height(30)
+                .on_press(Message::Last),
+            iced::widget::image(image_handle).width(800),
+            iced::widget::button("next")
+                .width(50)
+                .height(30)
+                .on_press(Message::Next),
+            iced::widget::button("del")
+                .width(30)
+                .height(30)
+                .on_press(Message::DeleteCurrent)
+        ]
+        .into()
+    }
+
+    fn delete_img(&mut self, index: usize) {
+        let imgpath = self.img_paths[index].clone();
+        if index == self.img_paths.len() - 1 {
+            self.current_img -= 1;
+        }
+        self.img_paths.remove(index);
+        let paths: String = self
+            .img_paths
+            .iter()
+            .map(|s| s.to_string() + "\n")
+            .collect();
+        fs::write("./paths", paths).unwrap();
+        if let Ok(()) = fs::remove_file(imgpath) {}
+    }
+}
+
+impl Default for Viewer {
+    fn default() -> Self {
+        if path::Path::new("./paths").exists() {
+            let img_paths = get_paths();
+            let mut images_bytes = Vec::new();
+            for p in &img_paths {
+                images_bytes.push(fs::read(p).unwrap());
+            }
+            Self {
+                img_paths,
+                current_img: 0,
+                images_bytes,
+            }
+        } else {
+            panic!("");
+        }
+    }
+}
+
+fn main() -> iced::Result {
+    let response = fs::read_to_string("./auto").unwrap();
+
+    autocomplete::SearchResult::parse(&response);
+
+    iced::application("R34 Viewer", Viewer::update, Viewer::view)
+        .subscription(keys)
+        .run()
+}
+
+fn get_paths() -> Vec<String> {
+    let mut paths = Vec::new();
+
+    let ps = fs::read_to_string("./paths").unwrap();
+
+    for p in ps.lines() {
+        paths.push(p.to_string());
+    }
+
+    paths
+}
+
+fn keys(_v: &Viewer) -> iced::Subscription<Message> {
+    use iced::keyboard::{self, key::Named, Key};
+
+    keyboard::on_key_press(|key, _modi| match key.as_ref() {
+        Key::Named(Named::ArrowRight) => Some(Message::Next),
+        Key::Named(Named::ArrowLeft) => Some(Message::Last),
+        Key::Named(Named::Delete) => Some(Message::DeleteCurrent),
+        Key::Named(Named::Escape) => Some(Message::Quit),
+        Key::Character("d") => Some(Message::DeleteCurrent),
+        _ => None,
+    })
+}
