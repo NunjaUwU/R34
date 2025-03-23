@@ -94,8 +94,14 @@ impl Viewer {
                 Task::none()
             }
             Message::Quit => iced::exit(),
-            Message::SearchInput(input) => {
+            Message::SearchInput(mut input) => {
                 self.search_bar_content = input.clone();
+                let input = if input.starts_with('-') {
+                    input.remove(0);
+                    input
+                } else {
+                    input
+                };
                 Task::perform(autocomplete::ac_search(input), Message::Searched)
             }
             Message::Searched(response) => {
