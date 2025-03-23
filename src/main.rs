@@ -1,10 +1,11 @@
 use std::{fs, path};
 
 use autocomplete::{SearchResult, TagType};
-use iced::{Element, Task, Theme};
+use iced::{advanced::Widget, Element, Point, Task, Theme};
 
 #[allow(unused)]
 mod autocomplete;
+mod cstm_widgets;
 mod download;
 #[allow(unused)]
 mod testt;
@@ -109,10 +110,13 @@ impl Viewer {
                 Task::none()
             }
             Message::AddTag => {
-                for t in &self.search_results {
-                    if self.search_bar_content == t.value {
+                for t in self.search_results.clone() {
+                    if self.search_bar_content == t.value
+                        || self.search_bar_content == "-".to_string() + &t.value.clone()
+                    {
                         self.tags.push(self.search_bar_content.clone());
                         self.search_bar_content = "".to_string();
+                        self.search_results.clear();
                     }
                 }
 
