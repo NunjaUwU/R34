@@ -50,6 +50,7 @@ struct Viewer {
 
 impl Default for Viewer {
     fn default() -> Self {
+        startup();
         let img_paths = get_paths();
         Self {
             img_paths,
@@ -241,6 +242,15 @@ impl Viewer {
         let paths = get_paths();
         let img_paths = get_paths();
         self.img_paths = img_paths;
+    }
+}
+
+fn startup() {
+    if !path::Path::new("./paths").exists() {
+        fs::File::create("./paths").unwrap();
+    }
+    if !path::Path::new("./imgs").exists() {
+        fs::create_dir("./imgs").unwrap();
     }
 }
 
